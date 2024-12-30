@@ -23,15 +23,15 @@ class Gpt(nn.Module):
         super().__init__()
         self.config = config
 
-        self.transfomer = nn.ModuleDict({
-            "wte": nn.Embedding(config.vocab_size, config.n_embd),
-            "wpe": nn.Embedding(config.block_size, config.n_embd),
-            "h": nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            "ln_f": nn.LayerNorm(config.n_embd)
-        })
+        self.transformer = nn.ModuleDict(dict(
+            wte = nn.Embedding(config.vocab_size, config.n_embd),
+            wpe = nn.Embedding(config.block_size, config.n_embd),
+            h =  nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            ln_f = nn.LayerNorm(config.n_embd)
+        ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
-        # weight sharing scheme
+        # weight sharing schema
         self.transformer.wte.weight = self.lm_head.weight
 
         # init params
@@ -60,14 +60,14 @@ class Gpt(nn.Module):
 
         x = tok_emb + pos_emb
 
-        for block in self.transfomer.h:
+        for block in self.transformer.h:
             x = block(x)
 
-        x = self.transfomer.ln_f(x)
+        x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
 
         loss = None
-        if targets:
+        if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
         return logits, loss
 
@@ -122,27 +122,3 @@ class Gpt(nn.Module):
     
     def configure_optimizers(self, weight_decay, learning_rate, device_type):
         pass
-
-if __name__ == '__main__':
-    config = GPTConfig()
-    model = Gpt(config)
-
-    device = detect_device()
-    logger.info(f"Using device: {device}")
-
-    torch.manual_seed(1337)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(1337)
-
-    train_loader = DataLoaderLite(B=4, T=32)
-    model = model.to(device)
-
-    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
-    for i in range(50):
-        x, y = train_loader.next_batch()
-        x, y = x.to(device), y.to(device)
-        optimizer.zero_grad()
-        logits, loss = model(x, y)
-        loss.backward()
-        optimizer.step()
-        print(f"step {i}, loss: {loss.item()}")

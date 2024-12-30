@@ -41,7 +41,6 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd)
         self.gelu = nn.GELU(approximate='tanh')
         self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)
-
         self.c_proj.NANOGPT_SCALE_INIT = 1
     
     def forward(self, x):
@@ -55,9 +54,9 @@ class Block(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
 
-        self.att_norm = LayerNorm(config.embed_size)
+        self.att_norm = LayerNorm(config.n_embd)
         self.attention = Attention(config)
-        self.layer_norm = LayerNorm(config.embed_size)
+        self.layer_norm = LayerNorm(config.n_embd)
         self.mlp = MLP(config)
 
     def forward(self, x):
